@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Private Chat</title>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<style>
+body { font-family: Arial; background:#111; color:#eee; }
+#chat { display:none; }
+#messages { height:300px; overflow-y:auto; border:1px solid #444; padding:5px; }
+input, button { padding:8px; margin:5px 0; width:100%; }
+</style>
+</head>
+
+<body>
+
+<div id="login">
+  <h2>Login</h2>
+  <input id="user" placeholder="Username">
+  <input id="pass" placeholder="Password" type="password">
+  <button onclick="login()">Enter</button>
+</div>
+
+<div id="chat">
+  <h3>Private Chat</h3>
+  <div id="messages"></div>
+  <input id="msg" placeholder="Type message...">
+  <button onclick="send()">Send</button>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBA2RRY8NsHZ0qrpmFuboSIWjBhoeIWS3o",
+  authDomain: "ab-chat-83b2c.firebaseapp.com",
+  databaseURL: "https://ab-chat-83b2c-default-rtdb.firebaseio.com",
+  projectId: "ab-chat-83b2c"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let currentUser = "";
+
+function login() {
+  const u = user.value;
+  const p = pass.value;
+
+  if (
+    (u === "Andre S" && p === "Astewartjr") ||
+    (u === "Bueter" && p === "Zbueter")
+  ) {
+    currentUser = u;
+    login.style.display = "none";
+    chat.style.display = "block";
+    listen();
+  } else {
+    alert("Invalid login");
+  }
+}
+
+function send() {
+  if (!msg.value) return;
+  db.ref("chat").push({
+    user: currentUser,
+    text: msg.value,
+    time: Date.now()
+  });
+  msg.value = "";
+}
+
+function listen() {
+  db.ref("chat").limitToLast(100).on("child_added", snap => {
+    const m = snap.val();
+    messages.innerHTML += `<div><b>${m.user}:</b> ${m.text}</div>`;
+    messages.scrollTop = messages.scrollHeight;
+  });
+}
+</script>
+
+</body>
+</html>
+
+
