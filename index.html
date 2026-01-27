@@ -53,8 +53,8 @@ function login() {
     (u === "Bueter" && p === "Zbueter")
   ) {
     currentUser = u;
-    login.style.display = "none";
-    chat.style.display = "block";
+    document.getElementById("login").style.display = "none";
+    document.getElementById("chat").style.display = "block";
     listen();
   } else {
     alert("Invalid login");
@@ -84,4 +84,5 @@ function listen() {
 </html>
 
  
+
 
