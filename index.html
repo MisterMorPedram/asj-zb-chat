@@ -4,34 +4,72 @@
 <meta charset="UTF-8">
 <title>Private Chat</title>
 
+<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 
 <style>
-body { font-family: Arial; background:#111; color:#eee; }
-#chat { display:none; }
-#messages { height:300px; overflow-y:auto; border:1px solid #444; padding:5px; }
-input, button { padding:8px; margin:5px 0; width:100%; }
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: #eee;
+  margin: 0;
+  padding: 10px;
+}
+
+#chat {
+  display: none;
+}
+
+#messages {
+  height: 350px;
+  overflow-y: auto;
+  border: 1px solid #444;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+input, button {
+  padding: 10px;
+  margin: 5px 0;
+  width: 100%;
+  box-sizing: border-box;
+  background: #222;
+  color: #eee;
+  border: 1px solid #444;
+}
+
+button {
+  cursor: pointer;
+}
+
+img {
+  max-width: 220px;
+  border-radius: 6px;
+  margin-top: 5px;
+}
 </style>
 </head>
 
 <body>
 
 <div id="login">
-  <h2>Login</h2>
+  <h2>Private Chat Login</h2>
   <input id="user" placeholder="Username">
-  <input id="pass" placeholder="Password" type="password">
+  <input id="pass" type="password" placeholder="Password">
   <button onclick="login()">Enter</button>
 </div>
 
 <div id="chat">
-  <h3>Private Chat</h3>
+  <h3>Andre ↔ Bueter</h3>
   <div id="messages"></div>
-  <input id="msg" placeholder="Type message...">
+  <input id="msg" placeholder="Type a message or paste an image...">
   <button onclick="send()">Send</button>
 </div>
 
 <script>
+/* 🔥 Firebase Config */
 const firebaseConfig = {
   apiKey: "AIzaSyBA2RRY8NsHZ0qrpmFuboSIWjBhoeIWS3o",
   authDomain: "ab-chat-83b2c.firebaseapp.com",
@@ -40,10 +78,13 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const db = firebase.database();
+const storage = firebase.storage();
 
 let currentUser = "";
 
+/* 🔐 Login */
 function login() {
   const u = user.value;
   const p = pass.value;
@@ -61,20 +102,65 @@ function login() {
   }
 }
 
+/* 💬 Send text */
 function send() {
-  if (!msg.value) return;
+  if (!msg.value.trim()) return;
+
   db.ref("chat").push({
     user: currentUser,
     text: msg.value,
     time: Date.now()
   });
+
   msg.value = "";
 }
 
+/* 🖼️ Paste image support */
+document.addEventListener("paste", e => {
+  if (!currentUser) return;
+
+  const items = e.clipboardData.items;
+  for (let item of items) {
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      uploadImage(file);
+    }
+  }
+});
+
+/* ⬆️ Upload image */
+function uploadImage(file) {
+  const ref = storage.ref("images/" + Date.now() + "_" + file.name);
+
+  ref.put(file).then(snapshot => {
+    snapshot.ref.getDownloadURL().then(url => {
+      db.ref("chat").push({
+        user: currentUser,
+        image: url,
+        time: Date.now()
+      });
+    });
+  });
+}
+
+/* 👂 Listen for messages */
 function listen() {
   db.ref("chat").limitToLast(100).on("child_added", snap => {
     const m = snap.val();
-    messages.innerHTML += `<div><b>${m.user}:</b> ${m.text}</div>`;
+
+    if (m.text) {
+      messages.innerHTML += `<div><b>${m.user}:</b> ${m.text}</div>`;
+    }
+
+    if (m.image) {
+      messages.innerHTML += `
+        <div>
+          <b>${m.user}:</b><br>
+          <img src="${m.image}">
+        </div>
+      `;
+    }
+
     messages.scrollTop = messages.scrollHeight;
   });
 }
@@ -82,8 +168,3 @@ function listen() {
 
 </body>
 </html>
-
- 
-
- 
-
