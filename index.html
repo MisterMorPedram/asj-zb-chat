@@ -115,15 +115,15 @@ function send() {
   msg.value = "";
 }
 
-/* 🖼️ Paste image support */
-document.addEventListener("paste", e => {
+/* 🖼️ Paste image support (reliable) */
+msg.addEventListener("paste", e => {
   if (!currentUser) return;
 
   const items = e.clipboardData.items;
   for (let item of items) {
     if (item.type.startsWith("image/")) {
       const file = item.getAsFile();
-      uploadImage(file);
+      if (file) uploadImage(file);
     }
   }
 });
