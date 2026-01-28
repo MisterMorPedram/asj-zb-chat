@@ -93,9 +93,7 @@ function login() {
     document.getElementById("login").style.display = "none";
     document.getElementById("chat").style.display = "block";
     listen();
-  } else {
-    alert("Invalid login");
-  }
+  } else alert("Invalid login");
 }
 
 /* 💬 Send text */
@@ -112,7 +110,7 @@ function send() {
   msgInput.value = "";
 }
 
-/* ⬆️ Upload image via file input */
+/* ⬆️ Upload image via file input (max 100MB) */
 function uploadFile() {
   const fileInput = document.getElementById("fileInput");
   if (!fileInput.files.length) return;
@@ -153,6 +151,9 @@ function listen() {
     messages.scrollTop = messages.scrollHeight;
   });
 }
+
+/* 🔍 Debug: check bucket is recognized */
+console.log("Firebase Storage bucket:", firebase.app().options.storageBucket);
 </script>
 
 </body>
