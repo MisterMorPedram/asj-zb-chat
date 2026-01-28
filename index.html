@@ -19,6 +19,7 @@ body {
 }
 
 #chat { display: none; }
+
 #messages {
   height: 350px;
   overflow-y: auto;
@@ -26,6 +27,7 @@ body {
   padding: 8px;
   margin-bottom: 10px;
 }
+
 input, button {
   padding: 10px;
   margin: 5px 0;
@@ -35,8 +37,14 @@ input, button {
   color: #eee;
   border: 1px solid #444;
 }
+
 button { cursor: pointer; }
-img { max-width: 220px; border-radius: 6px; margin-top: 5px; }
+
+img {
+  max-width: 220px;
+  border-radius: 6px;
+  margin-top: 5px;
+}
 </style>
 </head>
 
@@ -64,10 +72,12 @@ const firebaseConfig = {
   apiKey: "AIzaSyBA2RRY8NsHZ0qrpmFuboSIWjBhoeIWS3o",
   authDomain: "ab-chat-83b2c.firebaseapp.com",
   databaseURL: "https://ab-chat-83b2c-default-rtdb.firebaseio.com",
-  projectId: "ab-chat-83b2c"
+  projectId: "ab-chat-83b2c",
+  storageBucket: "ab-chat-83b2c.appspot.com" // ✅ Correct bucket
 };
 
 firebase.initializeApp(firebaseConfig);
+
 const db = firebase.database();
 const storage = firebase.storage();
 
@@ -83,7 +93,9 @@ function login() {
     document.getElementById("login").style.display = "none";
     document.getElementById("chat").style.display = "block";
     listen();
-  } else alert("Invalid login");
+  } else {
+    alert("Invalid login");
+  }
 }
 
 /* 💬 Send text */
@@ -100,7 +112,7 @@ function send() {
   msgInput.value = "";
 }
 
-/* ⬆️ Upload image via file input (works reliably) */
+/* ⬆️ Upload image via file input */
 function uploadFile() {
   const fileInput = document.getElementById("fileInput");
   if (!fileInput.files.length) return;
