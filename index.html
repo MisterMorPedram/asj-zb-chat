@@ -86,8 +86,8 @@ let currentUser = "";
 
 /* 🔐 Login */
 function login() {
-  const u = user.value;
-  const p = pass.value;
+  const u = document.getElementById("user").value;
+  const p = document.getElementById("pass").value;
 
   if (
     (u === "Andre S" && p === "Astewartjr") ||
@@ -104,19 +104,20 @@ function login() {
 
 /* 💬 Send text */
 function send() {
-  if (!msg.value.trim()) return;
+  const msgInput = document.getElementById("msg");
+  if (!msgInput.value.trim()) return;
 
   db.ref("chat").push({
     user: currentUser,
-    text: msg.value,
+    text: msgInput.value,
     time: Date.now()
   });
 
-  msg.value = "";
+  msgInput.value = "";
 }
 
-/* 🖼️ Paste image support (reliable) */
-msg.addEventListener("paste", e => {
+/* 🖼️ Paste image support (fixed) */
+document.getElementById("msg").addEventListener("paste", e => {
   if (!currentUser) return;
 
   const items = e.clipboardData.items;
@@ -147,6 +148,7 @@ function uploadImage(file) {
 function listen() {
   db.ref("chat").limitToLast(100).on("child_added", snap => {
     const m = snap.val();
+    const messages = document.getElementById("messages");
 
     if (m.text) {
       messages.innerHTML += `<div><b>${m.user}:</b> ${m.text}</div>`;
