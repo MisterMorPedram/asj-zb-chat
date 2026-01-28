@@ -18,7 +18,9 @@ body {
   padding: 10px;
 }
 
-#chat { display: none; }
+#chat {
+  display: none;
+}
 
 #messages {
   height: 350px;
@@ -38,12 +40,14 @@ input, button {
   border: 1px solid #444;
 }
 
-button { cursor: pointer; }
+button {
+  cursor: pointer;
+}
 
 img {
-  max-width: 220px;
+  max-width: 240px;
   border-radius: 6px;
-  margin-top: 5px;
+  margin-top: 6px;
 }
 </style>
 </head>
@@ -60,23 +64,27 @@ img {
 <div id="chat">
   <h3>Andre ↔ Bueter</h3>
   <div id="messages"></div>
+
   <input id="msg" placeholder="Type a message...">
-  <button onclick="send()">Send</button>
-  <input type="file" id="fileInput" accept="image/*">
-  <button onclick="uploadFile()">Upload Image</button>
+  <button onclick="send()">Send Message</button>
+
+  <input id="file" type="file" accept="image/*">
+  <button onclick="uploadImage()">Upload Image</button>
 </div>
 
 <script>
-/* 🔥 Firebase Config */
+/* 🔥 Firebase Config — THIS IS THE IMPORTANT PART */
 const firebaseConfig = {
   apiKey: "AIzaSyBA2RRY8NsHZ0qrpmFuboSIWjBhoeIWS3o",
   authDomain: "ab-chat-83b2c.firebaseapp.com",
   databaseURL: "https://ab-chat-83b2c-default-rtdb.firebaseio.com",
   projectId: "ab-chat-83b2c",
-  storageBucket: "ab-chat-83b2c.appspot.com" // ✅ Correct bucket
+  storageBucket: "ab-chat-83b2c.firebasestorage.app"
 };
 
 firebase.initializeApp(firebaseConfig);
+
+console.log("Bucket in use:", firebase.app().options.storageBucket);
 
 const db = firebase.database();
 const storage = firebase.storage();
@@ -85,76 +93,64 @@ let currentUser = "";
 
 /* 🔐 Login */
 function login() {
-  const u = document.getElementById("user").value;
-  const p = document.getElementById("pass").value;
+  const u = user.value;
+  const p = pass.value;
 
-  if ((u === "Andre S" && p === "Astewartjr") || (u === "Bueter" && p === "Zbueter")) {
+  if (
+    (u === "Andre S" && p === "Astewartjr") ||
+    (u === "Bueter" && p === "Zbueter")
+  ) {
     currentUser = u;
-    document.getElementById("login").style.display = "none";
-    document.getElementById("chat").style.display = "block";
+    login.style.display = "none";
+    chat.style.display = "block";
     listen();
-  } else alert("Invalid login");
+  } else {
+    alert("Invalid login");
+  }
 }
 
 /* 💬 Send text */
 function send() {
-  const msgInput = document.getElementById("msg");
-  if (!msgInput.value.trim()) return;
+  if (!msg.value.trim()) return;
 
   db.ref("chat").push({
     user: currentUser,
-    text: msgInput.value,
+    text: msg.value,
     time: Date.now()
   });
 
-  msgInput.value = "";
+  msg.value = "";
 }
 
-/* ⬆️ Upload image via file input (max 100MB) */
-function uploadFile() {
-  const fileInput = document.getElementById("fileInput");
-  if (!fileInput.files.length) return;
-
+/* 🖼️ Upload image */
+function uploadImage() {
+  const fileInput = document.getElementById("file");
   const file = fileInput.files[0];
+  if (!file) return alert("Select an image first");
+
   if (file.size > 100 * 1024 * 1024) {
-    alert("File too large (max 100MB)");
+    alert("Max image size is 100MB");
     return;
   }
 
   const ref = storage.ref("images/" + Date.now() + "_" + file.name);
 
-  ref.put(file)
-    .then(snapshot => snapshot.ref.getDownloadURL())
-    .then(url => {
+  ref.put(file).then(snapshot => {
+    snapshot.ref.getDownloadURL().then(url => {
       db.ref("chat").push({
         user: currentUser,
         image: url,
         time: Date.now()
       });
-      fileInput.value = "";
-    })
-    .catch(err => {
-      console.error("Upload failed:", err);
-      alert("Upload failed! Check console for details.");
     });
+  });
+
+  fileInput.value = "";
 }
 
-/* 👂 Listen for messages */
+/* 👂 Listen */
 function listen() {
   db.ref("chat").limitToLast(100).on("child_added", snap => {
     const m = snap.val();
-    const messages = document.getElementById("messages");
 
-    if (m.text) messages.innerHTML += `<div><b>${m.user}:</b> ${m.text}</div>`;
-    if (m.image) messages.innerHTML += `<div><b>${m.user}:</b><br><img src="${m.image}"></div>`;
-
-    messages.scrollTop = messages.scrollHeight;
-  });
-}
-
-/* 🔍 Debug: check bucket is recognized */
-console.log("Firebase Storage bucket:", firebase.app().options.storageBucket);
-</script>
-
-</body>
-</html>
+    if (m.text) {
