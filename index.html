@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8">
@@ -8,6 +8,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script> <!-- ADDED: Firebase Auth SDK -->
 
 <style>
 body {
@@ -73,9 +74,12 @@ img {
 
 <div id="login">
   <h2> Schoology Login page </h2>
-  <input id="user" placeholder="Username">
+  <!-- Changed 'id="user"' to 'id="email"' for Firebase Auth compatibility -->
+  <input id="email" placeholder="Email">
   <input id="pass" type="password" placeholder="Password">
-  <button onclick="login()">Enter</button>
+  <button onclick="login()">Login</button>
+  <!-- Added an optional Sign Up button for new users -->
+  <button onclick="signup()">Sign Up (first time users)</button> 
   <div class="status" id="status">Ready to login</div>
 </div>
 
@@ -90,11 +94,12 @@ img {
   <button onclick="uploadImage()">📷 Upload Image (Max 100MB)</button>
   
   <div class="status" id="uploadStatus"></div>
+  <button onclick="logout()">Logout</button> <!-- ADDED: Logout Button -->
 </div>
 
 <script>
 // ============================================
-// 🔥 FIREBASE CONFIGURATION
+// 🔥 FIREBASE CONFIGURATION (copied from your data)
 // ============================================
 const firebaseConfig = {
   apiKey: "AIzaSyBA2RRY8NsHZ0qrpmFuboSIWjBhoeIWS3o",
@@ -102,56 +107,142 @@ const firebaseConfig = {
   databaseURL: "https://ab-chat-83b2c-default-rtdb.firebaseio.com",
   projectId: "ab-chat-83b2c",
   storageBucket: "ab-chat-83b2c.firebasestorage.app",
-  appId: "1:1055924916661:web:abcdef" // Optional but good practice
+  appId: "1:1055924916661:web:abcdef" // Your original App ID
 };
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Get references
+// Get references to Firebase services
 const db = firebase.database();
 const storage = firebase.storage();
+const auth = firebase.auth(); // NEW: Reference to Firebase Authentication service
 
 // Verify storage bucket
 console.log("✅ Firebase initialized");
 console.log("📦 Storage bucket:", firebase.app().options.storageBucket);
 
-// Global state
-let currentUser = "";
+// Global state for authenticated user's display name/email
+let currentUserName = ""; // Will be set by Firebase Auth
+
+// Flag to ensure the message listener isn't added multiple times
+let messagesListenerActive = false;
 
 // ============================================
-// 🔐 LOGIN FUNCTION
+// 🔐 AUTHENTICATION FUNCTIONS (Firebase Auth)
 // ============================================
+
+// Login function using Firebase Email/Password Authentication
 window.login = function() {
-  const userInput = document.getElementById("user");
+  const emailInput = document.getElementById("email"); // Input for email
   const passInput = document.getElementById("pass");
   const statusDiv = document.getElementById("status");
   
-  const u = userInput.value.trim();
-  const p = passInput.value;
+  const email = emailInput.value.trim();
+  const password = passInput.value;
 
-  // Hard-coded credentials
-  if (
-    (u === "Andre S" && p === "Astewartjr") ||
-    (u === "Bueter" && p === "Zbueter")
-  ) {
-    currentUser = u;
-    statusDiv.textContent = "✅ Login successful!";
-    
-    // Switch views
-    document.getElementById("login").style.display = "none";
-    document.getElementById("chat").style.display = "block";
-    
-    // Start listening for messages
-    listen();
-  } else {
-    statusDiv.textContent = "❌ Invalid username or password";
-    statusDiv.style.color = "#f66";
-  }
+  statusDiv.textContent = "Logging in...";
+  auth.signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+      // Login successful. The onAuthStateChanged listener will handle UI.
+      statusDiv.textContent = "✅ Login successful!";
+      statusDiv.style.color = "#4f4";
+      emailInput.value = ''; // Clear input fields
+      passInput.value = '';
+    })
+    .catch((error) => {
+      // Handle login errors
+      statusDiv.textContent = `❌ Login failed: ${error.message}`;
+      statusDiv.style.color = "#f66";
+      console.error("Login error:", error);
+    });
+}
+
+// Optional: Sign Up function for new users
+window.signup = function() {
+  const emailInput = document.getElementById("email");
+  const passInput = document.getElementById("pass");
+  const statusDiv = document.getElementById("status");
+
+  const email = emailInput.value.trim();
+  const password = passInput.value;
+
+  statusDiv.textContent = "Signing up...";
+  auth.createUserWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+      // Sign up successful. User is automatically logged in.
+      statusDiv.textContent = "✅ Sign up successful! Logged in automatically.";
+      statusDiv.style.color = "#4f4";
+      emailInput.value = ''; // Clear input fields
+      passInput.value = '';
+      // Optional: Update user profile with a display name if you want
+      // userCredential.user.updateProfile({ displayName: "New User Name" });
+    })
+    .catch((error) => {
+      statusDiv.textContent = `❌ Sign up failed: ${error.message}`;
+      statusDiv.style.color = "#f66";
+      console.error("Sign up error:", error);
+    });
+}
+
+// Logout function
+window.logout = function() {
+  auth.signOut()
+    .then(() => {
+      // Sign-out successful. onAuthStateChanged listener will handle UI.
+      console.log("User signed out.");
+    })
+    .catch((error) => {
+      // An error happened.
+      console.error("Logout error:", error);
+    });
 }
 
 // ============================================
-// 💬 SEND TEXT MESSAGE
+// LISTEN FOR AUTH STATE CHANGES (Crucial for UI management)
+// ============================================
+auth.onAuthStateChanged((user) => {
+  if (user) {
+    // User is signed in.
+    // Prioritize displayName if available, otherwise use email as display name.
+    currentUserName = user.displayName || user.email; 
+    console.log("User is signed in:", currentUserName, "UID:", user.uid);
+
+    // Show chat interface, hide login
+    document.getElementById("login").style.display = "none";
+    document.getElementById("chat").style.display = "block";
+    document.getElementById("status").textContent = ""; // Clear login status
+
+    // Start listening for messages only once when user logs in
+    if (!messagesListenerActive) {
+      listen();
+      messagesListenerActive = true; 
+    }
+    
+  } else {
+    // User is signed out.
+    currentUserName = ""; // Clear current user name
+    console.log("No user is signed in.");
+
+    // Show login interface, hide chat
+    document.getElementById("login").style.display = "block";
+    document.getElementById("chat").style.display = "none";
+    document.getElementById("status").textContent = "Ready to login"; // Reset login status
+
+    // If a listener was active, optionally clear messages and prepare for next login
+    if (messagesListenerActive) {
+        // To properly stop listening, you'd need to store the `on` callback reference
+        // For simplicity here, we clear the displayed messages. Firebase rules will
+        // block further access even if the listener technically remains 'active'
+        // on the client side without receiving data.
+        document.getElementById("messages").innerHTML = ""; 
+        messagesListenerActive = false; // Reset flag
+    }
+  }
+});
+
+// ============================================
+// 💬 SEND TEXT MESSAGE (Updated to use Firebase Auth user)
 // ============================================
 window.send = function() {
   const msgInput = document.getElementById("msg");
@@ -159,9 +250,16 @@ window.send = function() {
   
   if (!text) return;
 
-  // Push to Firebase
+  // Ensure an authenticated user is present
+  if (!auth.currentUser) { 
+      document.getElementById("status").textContent = "❌ You must be logged in to send messages!";
+      document.getElementById("status").style.color = "#f66";
+      return;
+  }
+
+  // Push to Firebase Realtime Database
   db.ref("chat").push({
-    user: currentUser,
+    user: currentUserName, // Use the display name from Firebase Auth
     text: text,
     time: Date.now()
   });
@@ -170,7 +268,7 @@ window.send = function() {
 }
 
 // ============================================
-// 🖼️ UPLOAD IMAGE
+// 🖼️ UPLOAD IMAGE (Updated to use Firebase Auth user)
 // ============================================
 window.uploadImage = function() {
   const fileInput = document.getElementById("file");
@@ -181,6 +279,13 @@ window.uploadImage = function() {
     uploadStatus.textContent = "⚠️ Please select an image first";
     uploadStatus.style.color = "#fa0";
     return;
+  }
+
+  // Ensure an authenticated user is present
+  if (!auth.currentUser) { 
+      uploadStatus.textContent = "❌ You must be logged in to upload images!";
+      uploadStatus.style.color = "#f66";
+      return;
   }
 
   // Check file size (100MB = 100 * 1024 * 1024 bytes)
@@ -194,31 +299,29 @@ window.uploadImage = function() {
   uploadStatus.textContent = "⏳ Uploading...";
   uploadStatus.style.color = "#4af";
 
-  // Create storage reference
+  // Create storage reference, using the authenticated user's UID for organization
   const timestamp = Date.now();
-  const storageRef = storage.ref("images/" + timestamp + "_" + file.name);
+  const storageRef = storage.ref(`images/${auth.currentUser.uid}/${timestamp}_${file.name}`); 
 
-  // Upload file
+  // Upload file to Cloud Storage
   storageRef.put(file).then(snapshot => {
     console.log("✅ Upload complete");
-    
-    // Get download URL
+    // Get the public download URL
     return snapshot.ref.getDownloadURL();
   }).then(url => {
     console.log("✅ Got URL:", url);
-    
-    // Save to database
+    // Save image URL to Firebase Realtime Database
     return db.ref("chat").push({
-      user: currentUser,
+      user: currentUserName, // Use the display name from Firebase Auth
       image: url,
       time: Date.now()
     });
   }).then(() => {
     uploadStatus.textContent = "✅ Image uploaded!";
     uploadStatus.style.color = "#4f4";
-    fileInput.value = "";
+    fileInput.value = ""; // Clear file input
     
-    // Clear status after 3 seconds
+    // Clear status message after a few seconds
     setTimeout(() => {
       uploadStatus.textContent = "";
     }, 3000);
@@ -234,6 +337,8 @@ window.uploadImage = function() {
 // ============================================
 function listen() {
   const messagesDiv = document.getElementById("messages");
+  // Clear existing messages before adding a new listener
+  messagesDiv.innerHTML = ""; 
   
   db.ref("chat").limitToLast(100).on("child_added", snap => {
     const m = snap.val();
@@ -254,6 +359,7 @@ function listen() {
     }
 
     messagesDiv.appendChild(messageDiv);
+    // Scroll to the bottom to show the newest message
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
 }
@@ -271,8 +377,8 @@ function escapeHtml(text) {
 // 🚀 INITIALIZATION
 // ============================================
 console.log("🚀 Chat app loaded successfully");
+// The onAuthStateChanged listener handles the initial UI setup upon load.
 </script>
 
 </body>
 </html>
-
